@@ -29,4 +29,8 @@ public class Parcel(int id, double length, double breadth, double height, double
     {
         Console.WriteLine("I love you puja");
     }
+    public void PrintParcelSummary()
+{
+    Console.WriteLine($"Parcel Weight: {Weight}, Height: {Height}");
+}
 }
