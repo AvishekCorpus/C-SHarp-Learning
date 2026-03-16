@@ -2,7 +2,13 @@
 
 class Program
 {
-    static List<Parcel> parcels = new List<Parcel>();
+    private static readonly List<Parcel> parcels = [];
+
+    public static List<Parcel> Parcels => parcels;
+
+    // GAP 3 FIX: GetParcels1() removed — it was a wrapper that only called
+    //            itself and added no behaviour
+    public static List<Parcel> GetParcels() => parcels;
 
     static void Main()
     {
@@ -10,18 +16,20 @@ class Program
 
         Console.WriteLine("Can I surprise you with a random fact? (yes/no): ");
         if ((Console.ReadLine() ?? "no").ToLower() == "yes")
-        {
             Parcel.Elevatepuja();
-        }
 
         // ── Single Parcel ─────────────────────────────────────
         Console.WriteLine("\n--- Enter details for your first parcel ---");
 
         Parcel parcel = CreateParcel(maxAttempts: 3);
-        // ↑ First parcel only gets 3 attempts per field before the program exits
+
+        // GAP 1 FIX: add the first parcel to the shared list immediately so
+        //            that the duplicate-ID check in CreateParcel can see it
+        //            when the batch parcels are being entered
+        GetParcels().Add(parcel);
 
         Console.WriteLine("\nParcel Created Successfully!");
-        DisplayParcel(parcel);
+        parcel.Display(); // GAP 4 FIX: delegate display to the class
 
         Console.Write("\nMark this parcel as delivered? (yes/no): ");
         if ((Console.ReadLine() ?? "no").ToLower() == "yes")
@@ -34,23 +42,18 @@ class Program
         int batchSize = 0;
         Console.Write("\nHow many parcels do you want to add to the batch? ");
         while (!int.TryParse(Console.ReadLine() ?? "", out batchSize) || batchSize < 0)
-        {
             Console.Write("Invalid input. Please enter a valid number of parcels: ");
-        }
 
         for (int i = 1; i <= batchSize; i++)
         {
             Console.WriteLine($"\n--- Enter details for Parcel {i} ---");
-            parcels.Add(CreateParcel());
-            // ↑ Batch parcels have unlimited attempts (default behaviour)
+            GetParcels().Add(CreateParcel());
             Console.WriteLine($"Parcel {i} added successfully!");
         }
 
-        if (parcels.Find(p => p.Id == parcel.Id) == null)
-        {
-            parcels.Add(parcel);
-            Console.WriteLine("\nYour first parcel has also been added to the batch.");
-        }
+        // GAP 1 FIX (continued): the "add first parcel if missing" block is
+        //            no longer needed because it was added above at creation time
+        //            — removed to avoid confusion and dead logic
 
         // ── Search ────────────────────────────────────────────
         string searchAgain = "yes";
@@ -61,12 +64,12 @@ class Program
 
             if (int.TryParse(Console.ReadLine() ?? "", out int searchId))
             {
-                Parcel? found = parcels.Find(p => p.Id == searchId);
+                Parcel? found = GetParcels().Find(p => p.Id == searchId);
 
                 if (found != null)
                 {
                     Console.WriteLine("\nParcel found:");
-                    DisplayParcel(found);
+                    found.Display(); // GAP 4 FIX: same here
                 }
                 else
                 {
@@ -89,68 +92,56 @@ class Program
     // ── Helper Methods ────────────────────────────────────────
 
     static Parcel CreateParcel(int maxAttempts = int.MaxValue)
-    // maxAttempts — how many wrong tries are allowed per field before quitting
-    // Defaults to int.MaxValue so batch parcels behave exactly as before
     {
-        int    id      = 0;
-        double length  = 0, breadth = 0, height = 0, weight = 0, value = 0;
+        int    id      = ReadInt   ("Enter Parcel ID: ",     "Invalid input. Please enter a unique Parcel ID: ",   maxAttempts, extraCheck: v => GetParcels().Find(p => p.Id == v) == null);
+        double length  = ReadDouble("Enter Length: ",         "Invalid input. Please enter a valid Length: ",       maxAttempts);
+        double breadth = ReadDouble("Enter Breadth: ",        "Invalid input. Please enter a valid Breadth: ",      maxAttempts);
+        double height  = ReadDouble("Enter Height: ",         "Invalid input. Please enter a valid Height: ",       maxAttempts);
+        double weight  = ReadDouble("Enter Weight: ",         "Invalid input. Please enter a valid Weight: ",       maxAttempts);
+        double value   = ReadDouble("Enter Parcel Value: ",   "Invalid input. Please enter a valid Parcel Value: ", maxAttempts);
+        string category = ReadString("Enter Parcel Category: ", "Invalid input. Please enter a valid Parcel Category: ", maxAttempts);
 
-        id      = ReadInt   ("Enter Parcel ID: ",      "Invalid input. Please enter a unique Parcel ID: ",   maxAttempts, extraCheck: v => parcels.Find(p => p.Id == v) == null);
-        length  = ReadDouble("Enter Length: ",          "Invalid input. Please enter a valid Length: ",       maxAttempts);
-        breadth = ReadDouble("Enter Breadth: ",         "Invalid input. Please enter a valid Breadth: ",      maxAttempts);
-        height  = ReadDouble("Enter Height: ",          "Invalid input. Please enter a valid Height: ",       maxAttempts);
-        weight  = ReadDouble("Enter Weight: ",          "Invalid input. Please enter a valid Weight: ",       maxAttempts);
-        value   = ReadDouble("Enter Parcel Value: ",    "Invalid input. Please enter a valid Parcel Value: ", maxAttempts);
-
-        return new Parcel(id, length, breadth, height, weight, value);
+        return new Parcel(id: id, length: length, breadth: breadth, height: height, weight: weight, value: value, category: category);
     }
 
 
     // ── Input helpers ─────────────────────────────────────────
 
     static int ReadInt(string prompt, string errorPrompt, int maxAttempts, Func<int, bool>? extraCheck = null)
-    // Reads an integer, re-prompts on bad input, exits if attempts run out
-    // extraCheck — optional extra rule (e.g. ID must be unique)
     {
         int attempts = 0;
         Console.Write(prompt);
 
         while (true)
         {
-            string raw = Console.ReadLine() ?? "";
-            bool parsed = int.TryParse(raw, out int result);
-            bool passesExtra = extraCheck == null || extraCheck(result);
-            // if no extra rule exists, treat it as passing automatically
+            string raw         = Console.ReadLine() ?? "";
+            bool   parsed      = int.TryParse(raw, out int result);
+            bool   passesExtra = extraCheck == null || extraCheck(result);
 
             if (parsed && result > 0 && passesExtra)
                 return result;
-                // ↑ valid — hand the number back to CreateParcel
 
             attempts++;
 
             if (attempts >= maxAttempts)
-            // hit the limit — say goodbye and stop the program
             {
-                Console.WriteLine($"\nToo many invalid attempts. Please try again later. Goodbye!");
+                Console.WriteLine("\nToo many invalid attempts. Please try again later. Goodbye!");
                 Environment.Exit(0);
-                // Environment.Exit(0) — 0 means "ended normally, not a crash"
             }
 
             Console.Write($"[Attempt {attempts}/{maxAttempts}] {errorPrompt}");
-            // shows the user how many tries they have used
         }
     }
 
     static double ReadDouble(string prompt, string errorPrompt, int maxAttempts)
-    // Same pattern as ReadInt but for decimals — no extra check needed here
     {
         int attempts = 0;
         Console.Write(prompt);
 
         while (true)
         {
-            string raw = Console.ReadLine() ?? "";
-            bool parsed = double.TryParse(raw, out double result);
+            string raw    = Console.ReadLine() ?? "";
+            bool   parsed = double.TryParse(raw, out double result);
 
             if (parsed && result > 0)
                 return result;
@@ -159,7 +150,7 @@ class Program
 
             if (attempts >= maxAttempts)
             {
-                Console.WriteLine($"\nToo many invalid attempts. Please try again later. Goodbye!");
+                Console.WriteLine("\nToo many invalid attempts. Please try again later. Goodbye!");
                 Environment.Exit(0);
             }
 
@@ -167,13 +158,28 @@ class Program
         }
     }
 
-
-    static void DisplayParcel(Parcel p)
+    // GAP 4 FIX: DisplayParcel removed — Parcel.Display() does this job now
+static string ReadString(string prompt, string errorPrompt, int maxAttempts)
     {
-        Console.WriteLine("Parcel ID:         " + p.Id);
-        Console.WriteLine("Weight:            " + p.Weight);
-        Console.WriteLine("Dimensions Volume: " + p.Dimensions);
-        Console.WriteLine("Value:             " + p.Value);
-        Console.WriteLine("Delivered Status:  " + p.IsDelivered);
+        int attempts = 0;
+        Console.Write(prompt);
+
+        while (true)
+        {
+            string result = Console.ReadLine() ?? "";
+
+            if (!string.IsNullOrWhiteSpace(result))
+                return result;
+
+            attempts++;
+
+            if (attempts >= maxAttempts)
+            {
+                Console.WriteLine("\nToo many invalid attempts. Please try again later. Goodbye!");
+                Environment.Exit(0);
+            }
+
+            Console.Write($"[Attempt {attempts}/{maxAttempts}] {errorPrompt}");
+        }
     }
 }
