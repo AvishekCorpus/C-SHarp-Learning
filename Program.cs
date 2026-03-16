@@ -99,8 +99,9 @@ class Program
         double height  = ReadDouble("Enter Height: ",         "Invalid input. Please enter a valid Height: ",       maxAttempts);
         double weight  = ReadDouble("Enter Weight: ",         "Invalid input. Please enter a valid Weight: ",       maxAttempts);
         double value   = ReadDouble("Enter Parcel Value: ",   "Invalid input. Please enter a valid Parcel Value: ", maxAttempts);
+        string category = ReadString("Enter Parcel Category: ", "Invalid input. Please enter a valid Parcel Category: ", maxAttempts);
 
-        return new Parcel(id, length, breadth, height, weight, value);
+        return new Parcel(id: id, length: length, breadth: breadth, height: height, weight: weight, value: value, category: category);
     }
 
 
@@ -158,4 +159,27 @@ class Program
     }
 
     // GAP 4 FIX: DisplayParcel removed — Parcel.Display() does this job now
+static string ReadString(string prompt, string errorPrompt, int maxAttempts)
+    {
+        int attempts = 0;
+        Console.Write(prompt);
+
+        while (true)
+        {
+            string result = Console.ReadLine() ?? "";
+
+            if (!string.IsNullOrWhiteSpace(result))
+                return result;
+
+            attempts++;
+
+            if (attempts >= maxAttempts)
+            {
+                Console.WriteLine("\nToo many invalid attempts. Please try again later. Goodbye!");
+                Environment.Exit(0);
+            }
+
+            Console.Write($"[Attempt {attempts}/{maxAttempts}] {errorPrompt}");
+        }
+    }
 }
