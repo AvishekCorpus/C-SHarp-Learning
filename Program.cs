@@ -1,4 +1,6 @@
-﻿namespace ShipmentLearning;
+﻿using System.Net.Http.Json;
+
+namespace ShipmentLearning;
 
 class Program
 {
@@ -10,9 +12,12 @@ class Program
     //            itself and added no behaviour
     public static List<Parcel> GetParcels() => parcels;
 
-    static void Main()
+    static async Task Main()
     {
         Console.WriteLine("Parcel Creation System");
+
+        var apiUrl = Environment.GetEnvironmentVariable("SHIPMENT_API_URL") ?? "https://localhost:7126";
+        using var client = new HttpClient { BaseAddress = new Uri(apiUrl) };
 
         Console.WriteLine("Can I surprise you with a random fact? (yes/no): ");
         if ((Console.ReadLine() ?? "no").ToLower() == "yes")
@@ -31,6 +36,8 @@ class Program
         Console.WriteLine("\nParcel Created Successfully!");
         parcel.Display(); // GAP 4 FIX: delegate display to the class
 
+        await TrySaveParcelToApi(parcel, client);
+
         Console.Write("\nMark this parcel as delivered? (yes/no): ");
         if ((Console.ReadLine() ?? "no").ToLower() == "yes")
         {
@@ -47,7 +54,9 @@ class Program
         for (int i = 1; i <= batchSize; i++)
         {
             Console.WriteLine($"\n--- Enter details for Parcel {i} ---");
-            GetParcels().Add(CreateParcel());
+            Parcel batchParcel = CreateParcel();
+            GetParcels().Add(batchParcel);
+            await TrySaveParcelToApi(batchParcel, client);
             Console.WriteLine($"Parcel {i} added successfully!");
         }
 
@@ -91,6 +100,26 @@ class Program
 
     // ── Helper Methods ────────────────────────────────────────
 
+    static async Task TrySaveParcelToApi(Parcel parcel, HttpClient client)
+    {
+        try
+        {
+            var response = await client.PostAsJsonAsync("api/parcels", parcel);
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("Parcel persisted to web API successfully.");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to persist parcel to API (status {response.StatusCode}).");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error when talking to web API: {ex.Message}");
+        }
+    }
+
     static Parcel CreateParcel(int maxAttempts = int.MaxValue)
     {
         int    id      = ReadInt   ("Enter Parcel ID: ",     "Invalid input. Please enter a unique Parcel ID: ",   maxAttempts, extraCheck: v => GetParcels().Find(p => p.Id == v) == null);
@@ -101,7 +130,7 @@ class Program
         double value   = ReadDouble("Enter Parcel Value: ",   "Invalid input. Please enter a valid Parcel Value: ", maxAttempts);
         string category = ReadString("Enter Parcel Category: ", "Invalid input. Please enter a valid Parcel Category: ", maxAttempts);
 
-        return new Parcel(id: id, length: length, breadth: breadth, height: height, weight: weight, value: value, category: category);
+        return new Parcel(id, length, breadth, height, weight, value, category);
     }
 
 

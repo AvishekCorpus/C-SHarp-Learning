@@ -7,4 +7,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Exclude API project files from console project source globbing -->
+    <Compile Remove="ShipmentLearning.Api\**\*.cs" />
+    <Content Remove="ShipmentLearning.Api\**\*" />
+  </ItemGroup>
+
 </Project>

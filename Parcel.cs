@@ -3,16 +3,19 @@ namespace ShipmentLearning;
 public class Parcel
 {
     // ── Properties ───────────────────────────────────────────
-    public int    Id          { get; private set; }
-    public double Weight      { get; private set; }
-    public double Dimensions  { get; private set; }
-    public double Value       { get; private set; }
-    public bool   IsDelivered { get; private set; } = false;
-    public double Length      { get; private set; }
-    public double Breadth     { get; private set; }
-    public double Height      { get; private set; }
-    public string Category    { get; private set; }
+    public int    Id          { get; set; }
+    public double Weight      { get; set; }
+    public double Dimensions  { get; set; }
+    public double Value       { get; set; }
+    public bool   IsDelivered { get; set; } = false;
+    public double Length      { get; set; }
+    public double Breadth     { get; set; }
+    public double Height      { get; set; }
+    public string Category    { get; set; } = string.Empty;
     private static int TotalParcelsCreated { get; set; } = 0;
+
+    // Parameterless ctor for EF and serialization
+    public Parcel() { }
 
     // Constructor
     public Parcel(int id, double length, double breadth, double height, double weight, double value, string category)
