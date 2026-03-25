@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shipment Booking Dashboard</title>
+  <style>
+    :root {
+      --bg: #0a192f;
+      --card: #112240;
+      --text: #e6f1ff;
+      --muted: #a8b2d1;
+      --green: #00e1a5;
+      --accent: #64ffda;
+      --danger: #ff5e57;
+      --shadow: 0 10px 30px rgba(2,12,27,0.7);
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Inter', 'Segoe UI', sans-serif; background: radial-gradient(circle at top, #152a4b, var(--bg)); color: var(--text); }
+    main { max-width: 1180px; margin: 1.5rem auto; padding: 1.2rem; }
+    h1 { font-size: clamp(1.8rem, 5vw, 2.8rem); text-align: center; margin-bottom: 0.4rem; color: var(--accent); text-shadow: 0 0 14px rgba(100,255,218,0.4); }
+    p.subtitle { color: var(--muted); text-align: center; margin-top: 0; margin-bottom: 1.6rem; }
+
+    .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+    .panel { background: linear-gradient(160deg, rgba(18,37,75,.94), rgba(12,25,50,.8)); border: 1px solid rgba(100,255,218,0.16); border-radius: 14px; padding: 1.2rem; box-shadow: var(--shadow); backdrop-filter: blur(8px); }
+
+    label { display: block; font-size: 0.87rem; margin-bottom: 0.35rem; color: #9eb7d7; }
+    input[type="number"], input[type="text"] { width: 100%; padding: 0.65rem 0.75rem; border: 1px solid #2b4a7c; border-radius: 10px; background: #152f66; color: var(--text); margin-bottom: 0.85rem; transition: all 0.2s ease; }
+    input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(100,255,218,0.18); }
+    .checkbox { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
+
+    button { cursor: pointer; padding: 0.8rem 1rem; border:none; border-radius: 10px; font-weight: 700; letter-spacing: 0.02em; color: #0b1c33; background: linear-gradient(135deg, #22d3ee 0%, #8b5cf6 100%); box-shadow: 0 10px 20px rgba(0,0,0,0.35); transition: transform .2s ease, filter .2s ease; }
+    button:hover { transform: translateY(-2px); filter: brightness(1.05); }
+    button:active { transform: translateY(0); }
+
+    .status { font-weight: 700; min-height: 1.25rem; margin-top: 0.5rem; }
+
+    table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 12px; margin-top: 1rem; }
+    thead { background: rgba(10,17,37,0.95); }
+    th, td { padding: 0.8rem 0.65rem; color: var(--text); border-bottom: 1px solid rgba(100,255,218,0.14); text-align: center; font-size: 0.87rem; }
+    th { font-weight: 700; letter-spacing: 0.03em; }
+    tr { background: rgba(6,14,31,0.8); transition: transform 0.2s ease, background 0.2s ease; }
+    tr:hover { transform: translateY(-2px); background: rgba(10,26,53,0.95); }
+
+    .actions button { margin: 0 0.2rem; font-size: 0.78rem; border-radius: 8px; padding: 0.4rem 0.65rem; }
+    .btn-update { background: #00d4a8; color: #031f1a; }
+    .btn-delete { background: #ff5e57; color: #2f0414; }
+
+    .notification { margin-top: 0.4rem; color: var(--accent); }
+    .show { animation: pulse 0.8s ease forwards; }
+    @keyframes pulse { 0% { transform: scale(0.97); opacity: 0.1; } 100% { transform: scale(1); opacity: 1; } }
+
+    @media (max-width: 600px) { h1 { font-size: 2rem; } table, thead, tbody, th, td, tr { display: block; } thead tr { position: absolute; top: -9999px; left: -9999px; } tr { margin: 0 0 1rem 0; } td { border: none; position: relative; padding-left: 50%; text-align: left; } td::before { content: attr(data-label); position: absolute; left: 12px; width: 45%; padding-right: 10px; font-weight: 700; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Shipment Booking Dashboard</h1>
+    <p class="subtitle">High-impact CRUD experience with database persistence and animation.</p>
+    <div class="grid">
+      <section class="panel">
+        <h2>Add / Update Parcel</h2>
+        <form id="parcel-form">
+          <label>Parcel ID <input type="number" id="id" required min="1" /></label>
+          <label>Length <input type="number" id="length" required step="0.01" min="0.01" /></label>
+          <label>Breadth <input type="number" id="breadth" required step="0.01" min="0.01" /></label>
+          <label>Height <input type="number" id="height" required step="0.01" min="0.01" /></label>
+          <label>Weight <input type="number" id="weight" required step="0.01" min="0.01" /></label>
+          <label>Value <input type="number" id="value" required step="0.01" min="0.01" /></label>
+          <label>Category <input type="text" id="category" required /></label>
+          <div class="checkbox"><input id="isDelivered" type="checkbox" /><span>Delivered</span></div>
+          <button type="submit" id="saveBtn">Save Parcel</button>
+        </form>
+        <div id="status" class="status"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Parcels Page</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.7rem;margin-bottom:1rem;">
+          <div style="background:#0d224c;padding:0.7rem;border-radius:10px;border:1px solid rgba(100,255,218,0.25);">Total Parcels:<br/><strong id="statTotal">0</strong></div>
+          <div style="background:#0d224c;padding:0.7rem;border-radius:10px;border:1px solid rgba(100,255,218,0.25);">Delivered:<br/><strong id="statDelivered">0</strong></div>
+          <div style="background:#0d224c;padding:0.7rem;border-radius:10px;border:1px solid rgba(100,255,218,0.25);">Pending:<br/><strong id="statPending">0</strong></div>
+          <div style="background:#0d224c;padding:0.7rem;border-radius:10px;border:1px solid rgba(100,255,218,0.25);">Total Value:<br/><strong id="statValue">0</strong></div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:0.8rem;">
+          <input id="filterSearch" type="text" placeholder="Search by category or ID" style="flex:1;min-width:160px;padding:0.5rem;border-radius:8px;border:1px solid #2b4a7c;background:#152f66;color:var(--text);" />
+          <select id="filterDelivered" style="padding:0.5rem;border-radius:8px;border:1px solid #2b4a7c;background:#152f66;color:var(--text);">
+            <option value="all">All</option>
+            <option value="true">Delivered</option>
+            <option value="false">Pending</option>
+          </select>
+          <button id="clearFilter" style="border-radius:8px;">Clear</button>
+        </div>
+
+        <table id="parcels-table">
+          <thead><tr><th>ID</th><th>Dim</th><th>Weight</th><th>Value</th><th>Category</th><th>Delivered</th><th>Cost</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.8rem;">
+          <button id="prevPage" style="padding:0.5rem 0.8rem;border-radius:8px;">Prev</button>
+          <span style="color:var(--muted);"><strong id="pageDisplay">Page 1</strong></span>
+          <button id="nextPage" style="padding:0.5rem 0.8rem;border-radius:8px;">Next</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const apiUrl = window.location.origin + '/api/parcels';
+    const summaryUrl = window.location.origin + '/api/parcels/summary';
+    const statusDiv = document.getElementById('status');
+    let editing = false;
+    let currentPage = 1;
+    const pageSize = 10;
+    let currentPageCount = 1;
+
+    async function report(message, success = true) {
+      statusDiv.textContent = message;
+      statusDiv.style.color = success ? '#00e1a5' : '#ff5e57';
+      statusDiv.classList.add('show');
+      setTimeout(() => statusDiv.classList.remove('show'), 900);
+    }
+
+    async function refreshSummary() {
+      try {
+        const res = await fetch(summaryUrl);
+        const summary = await res.json();
+        document.getElementById('statTotal').textContent = summary.total;
+        document.getElementById('statDelivered').textContent = summary.deliveredCount;
+        document.getElementById('statPending').textContent = summary.pendingCount;
+        document.getElementById('statValue').textContent = summary.totalValue.toFixed(2);
+      } catch (err) {
+        report('Summary failed: ' + err.message, false);
+      }
+    }
+
+    async function refreshParcels() {
+      try {
+        const search = encodeURIComponent(document.getElementById('filterSearch').value.trim());
+        const deliveredFilter = document.getElementById('filterDelivered').value;
+
+        let url = `${apiUrl}?page=${currentPage}&pageSize=${pageSize}`;
+        if (search) url += `&search=${search}`;
+        if (deliveredFilter !== 'all') url += `&delivered=${deliveredFilter}`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        currentPage = data.page;
+        currentPageCount = data.pages;
+
+        document.getElementById('pageDisplay').textContent = `Page ${data.page} of ${data.pages || 1}`;
+
+        const parcels = data.payload;
+        const tbody = document.querySelector('#parcels-table tbody');
+        tbody.innerHTML = '';
+
+        parcels.forEach(p => {
+          const tr = document.createElement('tr');
+          const shippingCost = (p.weight * 0.5 + p.value * 0.01).toFixed(2);
+          tr.innerHTML = `
+            <td data-label="ID">${p.id}</td>
+            <td data-label="Dimensions">${p.dimensions.toFixed(2)}</td>
+            <td data-label="Weight">${p.weight}</td>
+            <td data-label="Value">${p.value}</td>
+            <td data-label="Category">${p.category}</td>
+            <td data-label="Delivered">${p.isDelivered}</td>
+            <td data-label="Cost">${shippingCost}</td>
+            <td data-label="Actions" class="actions">
+              <button class="btn-update" onclick="loadParcel(${p.id})">Edit</button>
+              <button class="btn-delete" onclick="deleteParcel(${p.id})">Delete</button>
+            </td>`;
+          tbody.appendChild(tr);
+        });
+
+        await refreshSummary();
+      } catch (err) {
+        report('Could not load parcels: ' + err.message, false);
+      }
+    }
+
+    function setForm(parcel) {
+      document.getElementById('id').value = parcel.id;
+      document.getElementById('length').value = parcel.length;
+      document.getElementById('breadth').value = parcel.breadth;
+      document.getElementById('height').value = parcel.height;
+      document.getElementById('weight').value = parcel.weight;
+      document.getElementById('value').value = parcel.value;
+      document.getElementById('category').value = parcel.category;
+      document.getElementById('isDelivered').checked = parcel.isDelivered;
+      editing = true;
+      document.getElementById('saveBtn').textContent = 'Update Parcel';
+    }
+
+    async function loadParcel(id) {
+      try {
+        const res = await fetch(`${apiUrl}/${id}`);
+        if (!res.ok) throw new Error('Parcel not found');
+        const parcel = await res.json();
+        setForm(parcel);
+      } catch (err) {
+        report('Load error: ' + err.message, false);
+      }
+    }
+
+    async function deleteParcel(id) {
+      if (!confirm('Delete parcel ' + id + '?')) return;
+      try {
+        const res = await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete request failed');
+        report('Parcel removed');
+        await refreshParcels();
+      } catch (err) {
+        report('Delete error: ' + err.message, false);
+      }
+    }
+
+    document.getElementById('parcel-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const parcel = {
+        id: Number(document.getElementById('id').value),
+        length: Number(document.getElementById('length').value),
+        breadth: Number(document.getElementById('breadth').value),
+        height: Number(document.getElementById('height').value),
+        weight: Number(document.getElementById('weight').value),
+        value: Number(document.getElementById('value').value),
+        category: document.getElementById('category').value.trim(),
+        isDelivered: document.getElementById('isDelivered').checked
+      };
+
+      try {
+        const method = editing ? 'PUT' : 'POST';
+        const url = editing ? `${apiUrl}/${parcel.id}` : apiUrl;
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parcel)
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || 'Request failed');
+        }
+
+        await refreshParcels();
+        report(editing ? 'Parcel updated!' : 'Parcel created!');
+        document.getElementById('parcel-form').reset();
+        editing = false;
+        document.getElementById('saveBtn').textContent = 'Save Parcel';
+      } catch (err) {
+        report('Save error: ' + err.message, false);
+      }
+    });
+
+    function resetFilters() {
+      currentPage = 1;
+      document.getElementById('pageDisplay').textContent = `Page ${currentPage}`;
+    }
+
+    document.getElementById('filterSearch').addEventListener('input', () => {
+      resetFilters();
+      refreshParcels();
+    });
+    document.getElementById('filterDelivered').addEventListener('change', () => {
+      resetFilters();
+      refreshParcels();
+    });
+    document.getElementById('clearFilter').addEventListener('click', () => {
+      document.getElementById('filterSearch').value = '';
+      document.getElementById('filterDelivered').value = 'all';
+      resetFilters();
+      refreshParcels();
+    });
+
+    document.getElementById('prevPage').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage -= 1;
+        refreshParcels();
+      }
+    });
+
+    document.getElementById('nextPage').addEventListener('click', () => {
+      if (currentPage < currentPageCount) {
+        currentPage += 1;
+        refreshParcels();
+      }
+    });
+
+    refreshParcels();
+  </script>
+</body>
+</html>
